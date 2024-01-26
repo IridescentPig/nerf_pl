@@ -1,3 +1,7 @@
 [submodule "torchsearchsorted"]
 	path = torchsearchsorted
 	url = https://github.com/aliutkus/torchsearchsorted.git
+
+[submodule "manopth"]
+	path = mano/manopth
+	url = https://github.com/IridescentPig/manopth.git
