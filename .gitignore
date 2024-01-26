@@ -136,6 +136,6 @@ dmypy.json
 .pyre/
 
 figs/
-mano/models/*
+mano/models/*.pkl
 objects
 data/nerf_synthetic/*
