@@ -1,6 +1,6 @@
 .vscode/
 logs/
-ckpts/
+ckpts/*
 results/
 *.ply
 *.vol

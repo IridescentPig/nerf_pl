@@ -2,8 +2,8 @@ import torch
 from torch import searchsorted
 import numpy as np
 # from torchsearchsorted import searchsorted
-from mano.manolayer import ManoLayer
-from mano.deformation import warp_observation_to_canonical
+from manopth.manolayer import ManoLayer
+from utils.deformation import warp_observation_to_canonical
 
 __all__ = ['render_rays']
 

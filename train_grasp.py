@@ -8,7 +8,7 @@ import json
 
 from models.rendering import *
 from models.nerf import *
-from mano.manolayer import ManoLayer
+from manopth.manolayer import ManoLayer
 
 import metrics
 
