@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     imgs = []
     psnrs = []
-    dir_name = f'results/{args.dataset_name}/{args.scene_name}'
+    dir_name = f'./results/{args.dataset_name}/{args.scene_name}'
     os.makedirs(dir_name, exist_ok=True)
 
     for i in tqdm(range(len(dataset))):

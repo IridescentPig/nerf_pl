@@ -134,3 +134,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+figs/
+mano/models/*
+objects
+data/nerf_synthetic/*

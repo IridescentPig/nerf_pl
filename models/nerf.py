@@ -66,13 +66,16 @@ class NeRF(nn.Module):
             else:
                 layer = nn.Linear(W, W)
             layer = nn.Sequential(layer, nn.ReLU(True))
+            # layer = nn.Sequential(layer, nn.Softplus())
             setattr(self, f"xyz_encoding_{i+1}", layer)
         self.xyz_encoding_final = nn.Linear(W, W)
 
         # direction encoding layers
         self.dir_encoding = nn.Sequential(
                                 nn.Linear(W+in_channels_dir, W//2),
-                                nn.ReLU(True))
+                                nn.ReLU(True)
+                                # nn.Softplus()
+                                )
 
         # output layers
         self.sigma = nn.Linear(W, 1)

@@ -7,6 +7,8 @@ from mano.deformation import warp_observation_to_canonical
 
 __all__ = ['render_rays']
 
+shapes = torch.zeros(1, 10)
+
 """
 Function dependencies: (-> means function calls)
 
@@ -14,12 +16,6 @@ Function dependencies: (-> means function calls)
 
 @render_rays -> @sample_pdf if there is fine model
 """
-
-# ncomps = 45
-# mano_layer = ManoLayer(mano_root='./mano/models', use_pca=False, ncomps=ncomps, flat_hand_mean=True)
-# shapes = torch.zeros(1, 10)
-# faces = mano_layer.th_faces
-# vert_weights = mano_layer.th_weights
 
 def sample_pdf(bins, weights, N_importance, det=False, eps=1e-5):
     """
@@ -65,7 +61,7 @@ def sample_pdf(bins, weights, N_importance, det=False, eps=1e-5):
     return samples
 
 
-def render_rays(models,
+def render_rays_trans(models,
                 embeddings,
                 rays,
                 N_samples=64,
@@ -77,6 +73,7 @@ def render_rays(models,
                 white_back=False,
                 test_time=False,
                 poses=None,
+                mano_layer=None,
                 ):
     """
     Render rays by computing the output of @model applied on @rays
@@ -127,35 +124,44 @@ def render_rays(models,
         # Embed directions
         xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
 
-        # if poses is not None:
-        #     vertices, _, joint_trans_mat = mano_layer(poses, shapes)
-        #     vertices = vertices[0]
-        #     joint_trans_mat = joint_trans_mat[0]
-        #     joint_trans_mat = joint_trans_mat.permute(2, 0, 1)
-        #     # joint_trans_mat[:, :3, 3] *= 20
-        #     # joint_trans_mat = torch.inverse(joint_trans_mat)
+        if poses is not None:
+            vertices, _, joint_trans_mat = mano_layer(poses, shapes)
+            vertices = vertices[0]
+            joint_trans_mat = joint_trans_mat[0]
+            joint_trans_mat = joint_trans_mat.permute(2, 0, 1)
+            # joint_trans_mat[:, :3, 3] *= 12
+            # joint_trans_mat[:, :3, 3] *= 20
+            # joint_trans_mat = torch.inverse(joint_trans_mat)
 
-        #     xyz_ /= 20
-        #     trans_mat = warp_observation_to_canonical(xyz_, vertices, faces, joint_trans_mat, vert_weights)
-        #     trans_mat = torch.inverse(trans_mat)
-        #     xyz_ = torch.cat([xyz_, torch.ones(xyz_.shape[0], 1, device=xyz_.device)], dim=1)
-        #     xyz_ = xyz_.unsqueeze(-1)
-        #     xyz_ = torch.bmm(trans_mat.cuda(), xyz_)
-        #     xyz_ = xyz_[:, :3].squeeze()
-        #     xyz_ *= 20
+            xyz_ /= 12
+            trans_mat = warp_observation_to_canonical(xyz_, vertices, mano_layer.th_faces, joint_trans_mat, mano_layer.th_weights)
+            trans_mat = torch.inverse(trans_mat)
+            xyz_ = torch.cat([xyz_, torch.ones(xyz_.shape[0], 1, device=xyz_.device)], dim=1)
+            xyz_ = xyz_.unsqueeze(-1)
+            xyz_ = torch.bmm(trans_mat.cuda(), xyz_)
+            # xyz_ = xyz_[:, :3] / xyz_[:, 3:]
+            # xyz_ = xyz_.squeeze()
+            xyz_ = xyz_[:, :3].squeeze()
+            xyz_ *= 12
             
         if not weights_only:
-            # if poses is None:
-            dir_embedded = torch.repeat_interleave(dir_embedded, repeats=N_samples_, dim=0)
+            if poses is None:
+                dir_embedded = torch.repeat_interleave(dir_embedded, repeats=N_samples_, dim=0)
                         # (N_rays*N_samples_, embed_dir_channels)
-            # else:
-            #     xyz_ = xyz_.view(-1, N_samples_, 3)
-            #     dirs = xyz_[:, 1:] - xyz_[:, :-1]
-            #     xyz_ = xyz_.view(-1, 3)
-            #     dirs = torch.cat([dirs, dirs[:, -1:]], dim=1)
-            #     dirs = dirs / torch.linalg.norm(dirs, dim=-1, keepdim=True)
-            #     dirs = dirs.view(-1, 3)
-            #     dir_embedded = embeddings[1](dirs)
+            else:
+                xyz_ = xyz_.view(-1, N_samples_, 3)
+                dirs = xyz_[:, 1:] - xyz_[:, :-1]
+                xyz_ = xyz_.view(-1, 3)
+                dirs = torch.cat([dirs, dirs[:, -1:]], dim=1)
+                assert torch.isnan(dirs).any() == False, "dirs has nan"
+                dir_norm = torch.linalg.norm(dirs, dim=-1, keepdim=True)
+                dir_norm.data = torch.where(dir_norm.data == 0, torch.ones_like(dir_norm.data), dir_norm.data)
+                # dir_norm.data = torch.where(dir_norm.data == 0, torch.zeros_like(dir_norm.data) + 1e-8, dir_norm.data)
+                # dir_norm = dir_norm + 1e-8
+                dirs = dirs / dir_norm
+                assert torch.isnan(dirs).any() == False, "dirs has nan after norm"
+                dirs = dirs.view(-1, 3)
+                dir_embedded = embeddings[1](dirs)
 
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
